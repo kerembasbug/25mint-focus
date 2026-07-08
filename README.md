@@ -4,6 +4,16 @@ Portable build of the 25Mint Focus engine (same `focus-suite.js` that powers
 pomodorotimer.com.au). Installable PWA, works fully offline, ready to wrap as a
 Trusted Web Activity (TWA) for the Google Play Store.
 
+## ✅ Live now
+
+**https://kerembasbug.github.io/25mint-focus/** — deployed via GitHub Pages,
+installable today (Add to Home Screen works, runs offline). Verified 2026-07-08.
+
+To ship on the **Play Store** you still need the custom domain (below) so that
+`/.well-known/assetlinks.json` is served at the site root — GitHub *project*
+pages can't serve a root `.well-known`, but a **custom domain on this same repo**
+can. So the only remaining infra step is DNS.
+
 ## Contents
 
 | File | Purpose |
@@ -21,21 +31,20 @@ Trusted Web Activity (TWA) for the Google Play Store.
 theme (`assets/focus-suite.js`). When it changes, re-download it here (and vice
 versa). Only difference allowed: none — `FS_SHOP_BASE` handles the environment.
 
-## 1. Deploy (required before Play Store)
+## 1. Custom domain (one DNS record — needed for Play Store)
 
-Shopify cannot serve `/.well-known/assetlinks.json`, so the PWA must live on its
-own host. Recommended: **`app.pomodorotimer.com.au`** as a static site.
+The app is already live on GitHub Pages. To get the Play-Store-ready root domain,
+point a subdomain at this same repo:
 
-Options:
-- **Coolify server** (already running for the WooCommerce staging): create a
-  "Static" service, point it at this folder (or a git repo containing it), map
-  the subdomain, done.
-- Cloudflare Pages / Netlify: drag-and-drop this folder.
+1. **DNS** (at whoever runs pomodorotimer.com.au DNS): add
+   `app  CNAME  kerembasbug.github.io.`
+2. In the repo: add a `CNAME` file containing `app.pomodorotimer.com.au`
+   (one line), commit. GitHub Pages → Settings already picks it up; enable
+   "Enforce HTTPS" once the cert provisions (~15 min).
+3. Verify `https://app.pomodorotimer.com.au/` loads and
+   `https://app.pomodorotimer.com.au/.well-known/assetlinks.json` returns 200.
 
-Then add DNS: `app` CNAME → the host. HTTPS is mandatory (both handle it).
-
-Verify after deploy: `https://app.pomodorotimer.com.au/` loads, and Lighthouse
-"Installable" check passes.
+That's the only infra step that needs a human (DNS access).
 
 ## 2. Package for Play Store (Bubblewrap)
 
