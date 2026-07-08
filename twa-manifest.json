@@ -1,0 +1,47 @@
+{
+  "packageId": "au.com.pomodorotimer.focus",
+  "host": "app.pomodorotimer.com.au",
+  "name": "25Mint Focus — Pomodoro Timer & Focus Sounds",
+  "launcherName": "25Mint Focus",
+  "display": "standalone",
+  "themeColor": "#2f8f6b",
+  "themeColorDark": "#1e6a4d",
+  "navigationColor": "#2f8f6b",
+  "navigationColorDark": "#1e6a4d",
+  "backgroundColor": "#f4faf7",
+  "enableNotifications": false,
+  "startUrl": "/",
+  "iconUrl": "https://app.pomodorotimer.com.au/icons/icon-512.png",
+  "maskableIconUrl": "https://app.pomodorotimer.com.au/icons/maskable-512.png",
+  "splashScreenFadeOutDuration": 300,
+  "signingKey": {
+    "path": "./android.keystore",
+    "alias": "android"
+  },
+  "appVersionName": "1.0.0",
+  "appVersionCode": 1,
+  "shortcuts": [
+    {
+      "name": "Start 25-minute focus",
+      "shortName": "Focus 25",
+      "url": "/#timer",
+      "chosenIconUrl": "https://app.pomodorotimer.com.au/icons/icon-192.png"
+    },
+    {
+      "name": "Focus sounds",
+      "shortName": "Sounds",
+      "url": "/#sounds",
+      "chosenIconUrl": "https://app.pomodorotimer.com.au/icons/icon-192.png"
+    }
+  ],
+  "generatorApp": "bubblewrap-cli",
+  "webManifestUrl": "https://app.pomodorotimer.com.au/manifest.webmanifest",
+  "fallbackType": "customtabs",
+  "features": {},
+  "enableSiteSettingsShortcut": true,
+  "isChromeOSOnly": false,
+  "isMetaQuest": false,
+  "fullScopeUrl": "https://app.pomodorotimer.com.au/",
+  "minSdkVersion": 21,
+  "orientation": "portrait"
+}

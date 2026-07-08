@@ -1,0 +1,33 @@
+{
+  "name": "25Mint Focus — Pomodoro Timer & Focus Sounds",
+  "short_name": "25Mint Focus",
+  "description": "Free all-in-one focus app: Pomodoro timer, focus sounds & white noise, box breathing, daily streaks and tasks. Works offline.",
+  "id": "./",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f4faf7",
+  "theme_color": "#2f8f6b",
+  "categories": ["productivity", "education", "lifestyle"],
+  "lang": "en",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    {
+      "name": "Start 25-minute focus",
+      "short_name": "Focus 25",
+      "url": "./#timer",
+      "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Focus sounds",
+      "short_name": "Sounds",
+      "url": "./#sounds",
+      "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }]
+    }
+  ]
+}
