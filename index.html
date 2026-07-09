@@ -53,6 +53,7 @@
         <button data-preset="25/5">25 / 5</button>
         <button data-preset="50/10">50 / 10</button>
         <button data-preset="15/3">15 / 3</button>
+        <button data-preset="custom">Custom</button>
       </div>
       <div class="fs-seg fs-modes">
         <button class="fs-mode" data-mode="focus">Focus</button>
@@ -75,6 +76,21 @@
         <button class="fs-btn ghost sm" data-act="skip">Skip</button>
       </div>
       <div class="fs-cycles-row">Completed focus sessions: <b class="fs-cycles">0</b> · press <kbd>Space</kbd> to start / pause</div>
+
+      <button class="fs-settings-toggle" data-settings-toggle aria-expanded="false">⚙️ Settings</button>
+      <div class="fs-settings" data-settings>
+        <div class="fs-set-row"><span>Auto-start next session</span><button class="fs-switch" data-set-toggle="autostart" role="switch" aria-label="Auto-start next session"><span class="fs-switch-dot"></span></button></div>
+        <div class="fs-set-row"><span>Sound alert</span><button class="fs-switch" data-set-toggle="sound" role="switch" aria-label="Sound alert"><span class="fs-switch-dot"></span></button></div>
+        <div class="fs-set-row"><span>Notifications</span><button class="fs-switch" data-set-toggle="notify" role="switch" aria-label="Notifications"><span class="fs-switch-dot"></span></button></div>
+        <div class="fs-set-custom">
+          <div class="fs-set-custom-title">Custom durations (min) — used by the <b>Custom</b> preset</div>
+          <div class="fs-set-durs">
+            <label>Focus<input type="number" min="1" max="180" data-set-dur="focus"></label>
+            <label>Short<input type="number" min="1" max="60" data-set-dur="short"></label>
+            <label>Long<input type="number" min="1" max="60" data-set-dur="long"></label>
+          </div>
+        </div>
+      </div>
     </div>
   </section>
 

@@ -89,6 +89,21 @@
     '15/3':  { focus: 15 * 60, short: 3 * 60,  long: 10 * 60, label: '15 / 3' }
   };
 
+  /* ============================ Settings ============================ */
+  var Settings = {
+    defaults: { autostart: false, sound: true, notify: true, custom: { focus: 25, short: 5, long: 15 } },
+    load: function () {
+      var s = State.get('settings', null);
+      if (!s) return JSON.parse(JSON.stringify(this.defaults));
+      s.custom = s.custom || JSON.parse(JSON.stringify(this.defaults.custom));
+      if (s.autostart === undefined) s.autostart = false;
+      if (s.sound === undefined) s.sound = true;
+      if (s.notify === undefined) s.notify = true;
+      return s;
+    },
+    save: function (s) { State.set('settings', s); }
+  };
+
   var Timer = {
     views: [],
     tickHandle: null,
@@ -96,7 +111,7 @@
 
     load: function () {
       var s = State.get('timer', null);
-      if (!s || !PRESETS[s.preset]) {
+      if (!s || (s.preset !== 'custom' && !PRESETS[s.preset])) {
         s = { preset: '25/5', mode: 'focus', running: false, endAt: 0, remaining: PRESETS['25/5'].focus, cycles: 0 };
       }
       // Reconcile a running session against wall clock (persistence across reloads / pages)
@@ -109,7 +124,14 @@
       return s;
     },
     save: function () { State.set('timer', this.st); },
-    dur: function (mode) { return PRESETS[this.st.preset][mode || this.st.mode]; },
+    dur: function (mode) {
+      mode = mode || this.st.mode;
+      if (this.st.preset === 'custom') {
+        var cs = Settings.load().custom;
+        return Math.max(1, (cs[mode] || 25)) * 60;
+      }
+      return PRESETS[this.st.preset][mode];
+    },
 
     init: function () {
       if (this._init) return;
@@ -136,7 +158,7 @@
     },
 
     setPreset: function (p) {
-      if (!PRESETS[p]) return;
+      if (p !== 'custom' && !PRESETS[p]) return;
       this.st.preset = p;
       this.st.running = false; this.st.endAt = 0;
       this.st.remaining = this.dur();
@@ -184,22 +206,32 @@
     },
     _complete: function (silent) {
       var wasFocus = this.st.mode === 'focus';
+      var cfg = Settings.load();
       this._stopTick();
       this.st.running = false; this.st.endAt = 0; this.st.remaining = 0;
       if (wasFocus) {
         this.st.cycles = (this.st.cycles || 0) + 1;
         Stats.recordFocus(this.dur('focus') / 60);
         Tasks.creditActive();
-        if (!silent) { chime(); Celebrate.show(); Notify.fire('Focus session complete 🎉', 'Nice work. Time for a break.'); }
+        if (!silent) {
+          if (cfg.sound) chime();
+          Celebrate.show();
+          if (cfg.notify) Notify.fire('Focus session complete 🎉', 'Nice work. Time for a break.');
+        }
         // auto-advance to a break
         var nextMode = (this.st.cycles % 4 === 0) ? 'long' : 'short';
         this.st.mode = nextMode; this.st.remaining = this.dur(nextMode);
       } else {
-        if (!silent) { chime(); Notify.fire('Break over ☕', 'Ready for your next focus session?'); }
+        if (!silent) {
+          if (cfg.sound) chime();
+          if (cfg.notify) Notify.fire('Break over ☕', 'Ready for your next focus session?');
+        }
         this.st.mode = 'focus'; this.st.remaining = this.dur('focus');
       }
       this.save(); this.render();
       Stats.renderAll(); Tasks.renderAll();
+      // auto-start the next session if enabled (skip=silent still auto-starts, matches user intent)
+      if (cfg.autostart) { var self = this; setTimeout(function () { self.start(); }, 400); }
     }
   };
 
@@ -254,7 +286,7 @@
 
     var view = {
       render: function (s) {
-        var total = PRESETS[s.preset][s.mode];
+        var total = Timer.dur(s.mode);
         if (clock) clock.textContent = fmt(s.remaining);
         if (stateLbl) stateLbl.textContent = s.running
           ? (s.mode === 'focus' ? 'Focusing' : 'Break')
@@ -496,6 +528,53 @@
     });
   }
 
+  /* ============================ Settings UI ============================ */
+  function initSettings(root) {
+    var panel = $('[data-settings]', root);
+    if (!panel) return;
+    var cfg = Settings.load();
+
+    function sync() {
+      $all('[data-set-toggle]', panel).forEach(function (el) {
+        var on = !!cfg[el.getAttribute('data-set-toggle')];
+        el.setAttribute('aria-pressed', on ? 'true' : 'false');
+        el.classList.toggle('on', on);
+      });
+      ['focus', 'short', 'long'].forEach(function (m) {
+        var inp = $('[data-set-dur="' + m + '"]', panel);
+        if (inp) inp.value = cfg.custom[m];
+      });
+    }
+
+    $all('[data-set-toggle]', panel).forEach(function (el) {
+      el.addEventListener('click', function () {
+        var key = el.getAttribute('data-set-toggle');
+        cfg[key] = !cfg[key];
+        Settings.save(cfg);
+        if (key === 'notify' && cfg.notify) Notify.request();
+        sync();
+      });
+    });
+    $all('[data-set-dur]', panel).forEach(function (inp) {
+      inp.addEventListener('change', function () {
+        var m = inp.getAttribute('data-set-dur');
+        var v = Math.max(1, Math.min(180, parseInt(inp.value, 10) || Settings.defaults.custom[m]));
+        inp.value = v; cfg.custom[m] = v; Settings.save(cfg);
+        // if currently on custom preset and idle, reflect immediately
+        if (Timer.st.preset === 'custom' && !Timer.st.running) {
+          Timer.st.remaining = Timer.dur(); Timer.save(); Timer.render();
+        }
+      });
+    });
+
+    var gear = $('[data-settings-toggle]', root);
+    if (gear) gear.addEventListener('click', function () {
+      var open = panel.classList.toggle('open');
+      gear.setAttribute('aria-expanded', open ? 'true' : 'false');
+    });
+    sync();
+  }
+
   /* ============================ Tabs ============================ */
   function initTabs(root) {
     var tabs = $all('[data-tab]', root);
@@ -515,7 +594,7 @@
   function boot() {
     Timer.init();
     $all('[data-focus-timer]').forEach(function (r) { TimerView(r); });
-    $all('[data-focus-app]').forEach(function (r) { initTabs(r); initSounds(r); initBreathe(r); initTasks(r); });
+    $all('[data-focus-app]').forEach(function (r) { initTabs(r); initSounds(r); initBreathe(r); initTasks(r); initSettings(r); });
     Stats.renderAll();
     Tasks.renderAll();
     Timer.render();
@@ -523,5 +602,5 @@
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
   else boot();
 
-  window.FocusSuite = { Timer: Timer, Sounds: Sounds, Stats: Stats, Tasks: Tasks, State: State, Notify: Notify, version: '1.1.0' };
+  window.FocusSuite = { Timer: Timer, Sounds: Sounds, Stats: Stats, Tasks: Tasks, State: State, Notify: Notify, Settings: Settings, version: '1.2.0' };
 })(window, document);

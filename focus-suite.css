@@ -58,6 +58,23 @@
 .fs-sound input[type=range]{ width:100%; accent-color:var(--fs-green); }
 .fs-sounds-foot{ text-align:center; margin-top:4px; }
 
+/* ---------- Settings ---------- */
+.fs-settings-toggle{ display:inline-flex; align-items:center; gap:5px; margin:14px auto 0; border:0; background:transparent; color:var(--fs-mut); font-weight:700; font-size:13px; cursor:pointer; padding:6px 10px; border-radius:8px; }
+.fs-settings-toggle:hover{ background:#eef5f2; color:var(--fs-green-d); }
+.fs-settings{ max-height:0; overflow:hidden; transition:max-height .3s ease; text-align:left; }
+.fs-settings.open{ max-height:420px; margin-top:8px; }
+.fs-set-row{ display:flex; align-items:center; justify-content:space-between; padding:11px 4px; border-bottom:1px solid var(--fs-line); font-size:14px; font-weight:600; color:var(--fs-ink); }
+.fs-switch{ position:relative; width:44px; height:26px; border:0; border-radius:999px; background:#d3e0da; cursor:pointer; transition:.2s; flex:none; }
+.fs-switch.on{ background:var(--fs-green); }
+.fs-switch-dot{ position:absolute; top:3px; left:3px; width:20px; height:20px; border-radius:50%; background:#fff; transition:.2s; box-shadow:0 1px 3px rgba(0,0,0,.25); }
+.fs-switch.on .fs-switch-dot{ transform:translateX(18px); }
+.fs-set-custom{ padding:14px 4px 4px; }
+.fs-set-custom-title{ font-size:12.5px; color:var(--fs-mut); margin-bottom:10px; }
+.fs-set-durs{ display:flex; gap:10px; }
+.fs-set-durs label{ flex:1; display:flex; flex-direction:column; gap:5px; font-size:12px; font-weight:700; color:var(--fs-mut); text-transform:uppercase; letter-spacing:.5px; }
+.fs-set-durs input{ width:100%; border:1px solid #d7e7e0; border-radius:10px; padding:9px 10px; font-size:15px; text-align:center; background:#fbfdfc; color:var(--fs-ink); font-variant-numeric:tabular-nums; }
+.fs-set-durs input:focus{ outline:none; border-color:var(--fs-green); }
+
 /* ---------- Breathe ---------- */
 .fs-breathe{ text-align:center; padding:12px 0 4px; }
 .fs-breath-stage{ position:relative; width:230px; height:230px; margin:8px auto 18px; display:flex; align-items:center; justify-content:center; }
