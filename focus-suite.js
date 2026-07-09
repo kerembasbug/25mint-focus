@@ -59,6 +59,29 @@
     });
   }
 
+  /* ============================ Notifications ============================ */
+  var Notify = {
+    supported: function () { return 'Notification' in window; },
+    // Ask once, only on a real user gesture (first Start). Never blocks the timer.
+    request: function () {
+      if (!this.supported()) return;
+      try {
+        if (Notification.permission === 'default') { Notification.requestPermission(); }
+      } catch (e) {}
+    },
+    fire: function (title, body) {
+      if (!this.supported() || Notification.permission !== 'granted') return;
+      // Only notify when the tab is hidden — otherwise the on-screen chime + card is enough
+      if (document.visibilityState === 'visible') return;
+      try {
+        var opts = { body: body, tag: '25mint-focus', renotify: true };
+        if (window.FS_NOTIFY_ICON) opts.icon = window.FS_NOTIFY_ICON;
+        var n = new Notification(title, opts);
+        n.onclick = function () { window.focus(); n.close(); };
+      } catch (e) {}
+    }
+  };
+
   /* ============================ Timer (Pomodoro) singleton ============================ */
   var PRESETS = {
     '25/5':  { focus: 25 * 60, short: 5 * 60,  long: 15 * 60, label: '25 / 5' },
@@ -127,6 +150,7 @@
     toggle: function () { this.st.running ? this.pause() : this.start(); },
     start: function () {
       ctx(); // unlock audio on user gesture
+      Notify.request(); // ask once, on a genuine user gesture
       if (this.st.remaining <= 0) this.st.remaining = this.dur();
       this.st.running = true;
       this.st.endAt = Date.now() + this.st.remaining * 1000;
@@ -166,12 +190,12 @@
         this.st.cycles = (this.st.cycles || 0) + 1;
         Stats.recordFocus(this.dur('focus') / 60);
         Tasks.creditActive();
-        if (!silent) { chime(); Celebrate.show(); }
+        if (!silent) { chime(); Celebrate.show(); Notify.fire('Focus session complete 🎉', 'Nice work. Time for a break.'); }
         // auto-advance to a break
         var nextMode = (this.st.cycles % 4 === 0) ? 'long' : 'short';
         this.st.mode = nextMode; this.st.remaining = this.dur(nextMode);
       } else {
-        if (!silent) chime();
+        if (!silent) { chime(); Notify.fire('Break over ☕', 'Ready for your next focus session?'); }
         this.st.mode = 'focus'; this.st.remaining = this.dur('focus');
       }
       this.save(); this.render();
@@ -499,5 +523,5 @@
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
   else boot();
 
-  window.FocusSuite = { Timer: Timer, Sounds: Sounds, Stats: Stats, Tasks: Tasks, State: State, version: '1.0.0' };
+  window.FocusSuite = { Timer: Timer, Sounds: Sounds, Stats: Stats, Tasks: Tasks, State: State, Notify: Notify, version: '1.1.0' };
 })(window, document);
