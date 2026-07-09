@@ -479,11 +479,12 @@
         if (mins > max) max = mins;
         days.push({ key: key, label: wk[d.getDay()], mins: mins, today: key === tk });
       }
+      var TRACK = 100; // px, matches .fs-bar-track height headroom
       var html = days.map(function (d) {
-        var h = max > 0 ? Math.round((d.mins / max) * 100) : 0;
+        var h = (d.mins > 0 && max > 0) ? Math.max(4, Math.round((d.mins / max) * TRACK)) : 0;
         var title = Math.round(d.mins) + ' focus min';
         return '<div class="fs-bar-col"><div class="fs-bar-track">' +
-          '<div class="fs-bar-fill' + (d.today ? ' today' : '') + (d.mins > 0 ? '' : ' empty') + '" style="height:' + h + '%" title="' + title + '"></div>' +
+          '<div class="fs-bar-fill' + (d.today ? ' today' : '') + (d.mins > 0 ? '' : ' empty') + '" style="height:' + h + 'px" title="' + title + '"></div>' +
           '</div><div class="fs-bar-label' + (d.today ? ' today' : '') + '">' + d.label + '</div></div>';
       }).join('');
       hosts.forEach(function (host) { host.innerHTML = html; });
