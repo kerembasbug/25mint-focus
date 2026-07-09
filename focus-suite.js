@@ -464,6 +464,29 @@
       $all('[data-stat="total-min"]').forEach(function (e) { e.textContent = Math.round(s.totalMin); });
       $all('[data-stat="total-sessions"]').forEach(function (e) { e.textContent = s.sessions || 0; });
       $all('[data-stat="streak"]').forEach(function (e) { e.textContent = s.streak || 0; });
+      this.renderChart(s, tk);
+    },
+    renderChart: function (s, tk) {
+      var hosts = $all('[data-stat-chart]');
+      if (!hosts.length) return;
+      var days = [];
+      var max = 0;
+      var wk = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+      for (var i = 6; i >= 0; i--) {
+        var d = new Date(); d.setDate(d.getDate() - i);
+        var key = d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+        var mins = (s.days[key] && s.days[key].minutes) || 0;
+        if (mins > max) max = mins;
+        days.push({ key: key, label: wk[d.getDay()], mins: mins, today: key === tk });
+      }
+      var html = days.map(function (d) {
+        var h = max > 0 ? Math.round((d.mins / max) * 100) : 0;
+        var title = Math.round(d.mins) + ' focus min';
+        return '<div class="fs-bar-col"><div class="fs-bar-track">' +
+          '<div class="fs-bar-fill' + (d.today ? ' today' : '') + (d.mins > 0 ? '' : ' empty') + '" style="height:' + h + '%" title="' + title + '"></div>' +
+          '</div><div class="fs-bar-label' + (d.today ? ' today' : '') + '">' + d.label + '</div></div>';
+      }).join('');
+      hosts.forEach(function (host) { host.innerHTML = html; });
     }
   };
 
@@ -602,5 +625,5 @@
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
   else boot();
 
-  window.FocusSuite = { Timer: Timer, Sounds: Sounds, Stats: Stats, Tasks: Tasks, State: State, Notify: Notify, Settings: Settings, version: '1.2.0' };
+  window.FocusSuite = { Timer: Timer, Sounds: Sounds, Stats: Stats, Tasks: Tasks, State: State, Notify: Notify, Settings: Settings, version: '1.3.0' };
 })(window, document);
