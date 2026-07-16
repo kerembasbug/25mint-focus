@@ -768,7 +768,7 @@
   };
 
   function initShop(root) {
-    var panel = $('[data-shop]', root);
+    var panel = $('[data-panel="shop"]', root);
     if (!panel) return;
     var chipsHost = $('[data-shop-chips]', panel);
     var grid = $('[data-shop-grid]', panel);
