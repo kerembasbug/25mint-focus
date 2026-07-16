@@ -544,10 +544,9 @@
       var WEEKS = 18; // ~4 months
       var cells = [];
       var maxm = 0;
-      var start = new Date(); start.setHours(0, 0, 0, 0);
-      start.setDate(start.getDate() - (WEEKS * 7 - 1));
-      // align start to Sunday
-      start.setDate(start.getDate() - start.getDay());
+      var end = new Date(); end.setHours(0, 0, 0, 0);
+      end.setDate(end.getDate() + (6 - end.getDay())); // Saturday of the current week
+      var start = new Date(end); start.setDate(end.getDate() - (WEEKS * 7 - 1)); // Sunday, WEEKS ago
       for (var i = 0; i < WEEKS * 7; i++) {
         var d = new Date(start); d.setDate(start.getDate() + i);
         var key = d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
