@@ -91,7 +91,7 @@
 
   /* ============================ Settings ============================ */
   var Settings = {
-    defaults: { autostart: false, sound: true, notify: true, custom: { focus: 25, short: 5, long: 15 } },
+    defaults: { autostart: false, sound: true, notify: true, theme: 'auto', dailyGoal: 4, custom: { focus: 25, short: 5, long: 15 } },
     load: function () {
       var s = State.get('settings', null);
       if (!s) return JSON.parse(JSON.stringify(this.defaults));
@@ -99,6 +99,8 @@
       if (s.autostart === undefined) s.autostart = false;
       if (s.sound === undefined) s.sound = true;
       if (s.notify === undefined) s.notify = true;
+      if (s.theme === undefined) s.theme = 'auto';
+      if (s.dailyGoal === undefined) s.dailyGoal = 4;
       return s;
     },
     save: function (s) { State.set('settings', s); }
@@ -345,44 +347,100 @@
     { id: 'pink',  name: 'Pink Noise',  icon: '🌸' },
     { id: 'white', name: 'White Noise', icon: '⚪' },
     { id: 'rain',  name: 'Rain',        icon: '🌧️' },
-    { id: 'ocean', name: 'Ocean Waves', icon: '🌊' }
+    { id: 'ocean', name: 'Ocean Waves', icon: '🌊' },
+    { id: 'cafe',  name: 'Café',        icon: '☕' },
+    { id: 'forest', name: 'Forest',     icon: '🌲' }
   ];
 
   var Sounds = {
-    nodes: {}, // id -> {gain, src, ...}
-    master: null,
+    nodes: {}, master: null, schedTimer: null,
+    // short filtered-noise burst → rain droplet
+    droplet: function (c, dest, when) {
+      var b = c.createBuffer(1, c.sampleRate * 0.05, c.sampleRate), d = b.getChannelData(0);
+      for (var i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / d.length, 3);
+      var s = c.createBufferSource(); s.buffer = b;
+      var bp = c.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 1400 + Math.random() * 2600; bp.Q.value = 1.2;
+      var g = c.createGain(); g.gain.value = 0.10 + Math.random() * 0.16;
+      s.connect(bp); bp.connect(g); g.connect(dest); s.start(when);
+    },
+    // two quick FM sine blips → bird chirp
+    chirp: function (c, dest, when) {
+      var base = 1800 + Math.random() * 1400;
+      for (var k = 0; k < 2; k++) {
+        var t = when + k * 0.11, o = c.createOscillator(), g = c.createGain();
+        o.type = 'sine'; o.frequency.setValueAtTime(base, t); o.frequency.exponentialRampToValueAtTime(base * 1.5, t + 0.06);
+        g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.09, t + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.09);
+        o.connect(g); g.connect(dest); o.start(t); o.stop(t + 0.1);
+      }
+    },
+    // short high ping → cup/cutlery clink
+    clink: function (c, dest, when) {
+      var o = c.createOscillator(), g = c.createGain();
+      o.type = 'triangle'; o.frequency.value = 2400 + Math.random() * 1800;
+      g.gain.setValueAtTime(0.0001, when); g.gain.exponentialRampToValueAtTime(0.05, when + 0.005); g.gain.exponentialRampToValueAtTime(0.0001, when + 0.18);
+      o.connect(g); g.connect(dest); o.start(when); o.stop(when + 0.2);
+    },
     build: function (id) {
       var c = ctx(); if (!c) return null;
       if (!this.master) { this.master = c.createGain(); this.master.gain.value = 1; this.master.connect(c.destination); }
-      var g = c.createGain(); g.gain.value = 0;
-      var out = g;
-      var base = (id === 'rain') ? 'white' : (id === 'ocean' ? 'brown' : id);
-      var src = c.createBufferSource();
-      src.buffer = makeNoiseBuffer(c, base); src.loop = true;
+      // optional licensed loop override
+      if (window.FS_SOUND_LOOPS && window.FS_SOUND_LOOPS[id]) {
+        var lg = c.createGain(); lg.gain.value = 0; lg.connect(this.master);
+        var a = new Audio(window.FS_SOUND_LOOPS[id]); a.loop = true; a.crossOrigin = 'anonymous';
+        try { var mediaSrc = c.createMediaElementSource(a); mediaSrc.connect(lg); a.play().catch(function(){}); } catch (e) {}
+        return { gain: lg, audio: a };
+      }
+      var g = c.createGain(); g.gain.value = 0; g.connect(this.master);
+      var baseType = (id === 'rain' || id === 'forest') ? 'white' : (id === 'ocean' || id === 'cafe') ? 'brown' : id;
+      var src = c.createBufferSource(); src.buffer = makeNoiseBuffer(c, baseType); src.loop = true;
+      var transient = null;
       if (id === 'rain') {
-        var bp = c.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 2200; bp.Q.value = 0.6;
-        var hp = c.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 700;
-        src.connect(hp); hp.connect(bp); bp.connect(g);
+        var hp = c.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 800;
+        var bp = c.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 2200; bp.Q.value = 0.5;
+        src.connect(hp); hp.connect(bp); bp.connect(g); transient = 'droplet';
       } else if (id === 'ocean') {
         var lp = c.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 550;
         src.connect(lp); lp.connect(g);
-        // slow swell LFO on gain
         var lfo = c.createOscillator(); lfo.type = 'sine'; lfo.frequency.value = 0.09;
-        var lfoGain = c.createGain(); lfoGain.gain.value = 0.5;
-        lfo.connect(lfoGain); lfoGain.connect(g.gain); lfo.start();
+        var lg2 = c.createGain(); lg2.gain.value = 0.5; lfo.connect(lg2); lg2.connect(g.gain); lfo.start();
+      } else if (id === 'cafe') {
+        var lp2 = c.createBiquadFilter(); lp2.type = 'lowpass'; lp2.frequency.value = 900;
+        src.connect(lp2); lp2.connect(g); transient = 'clink';
+      } else if (id === 'forest') {
+        var lp3 = c.createBiquadFilter(); lp3.type = 'lowpass'; lp3.frequency.value = 700;
+        src.connect(lp3); lp3.connect(g);
+        var wlfo = c.createOscillator(); wlfo.type = 'sine'; wlfo.frequency.value = 0.13;
+        var wg = c.createGain(); wg.gain.value = 0.35; wlfo.connect(wg); wg.connect(g.gain); wlfo.start();
+        transient = 'chirp';
       } else {
         src.connect(g);
       }
-      g.connect(this.master);
       src.start();
-      return { gain: g, src: src };
+      return { gain: g, src: src, transient: transient };
+    },
+    startSched: function () {
+      if (this.schedTimer) return;
+      var self = this;
+      this.schedTimer = setInterval(function () {
+        var c = _ctx; if (!c) return;
+        var now = c.currentTime;
+        Object.keys(self.nodes).forEach(function (id) {
+          var n = self.nodes[id]; if (!n || !n.transient) return;
+          var vol = n.gain.gain.value; if (vol < 0.03) return;
+          // density scales with volume; schedule over next 1s
+          var rate = n.transient === 'droplet' ? 14 : n.transient === 'chirp' ? 0.6 : 0.9;
+          var count = 0, expected = rate * vol;
+          for (var t = 0; t < 1; t += 0.05) { if (Math.random() < expected * 0.05) { self[n.transient](c, n.gain, now + t); count++; } }
+        });
+      }, 1000);
     },
     setVol: function (id, v) {
       ctx();
       if (!this.nodes[id]) this.nodes[id] = this.build(id);
       var n = this.nodes[id]; if (!n) return;
-      var target = (id === 'ocean') ? v * 0.7 : v; // ocean has LFO headroom
+      var target = (id === 'ocean' || id === 'forest') ? v * 0.7 : v;
       n.gain.gain.setTargetAtTime(target, ctx().currentTime, 0.05);
+      if (n.transient) this.startSched();
       var s = State.get('sounds', {}); s[id] = v; State.set('sounds', s);
     },
     stopAll: function () {
@@ -465,6 +523,44 @@
       $all('[data-stat="total-sessions"]').forEach(function (e) { e.textContent = s.sessions || 0; });
       $all('[data-stat="streak"]').forEach(function (e) { e.textContent = s.streak || 0; });
       this.renderChart(s, tk);
+      this.renderGoal(s, tk);
+      this.renderHeatmap(s, tk);
+    },
+    renderGoal: function (s, tk) {
+      var hosts = $all('[data-goal]');
+      if (!hosts.length) return;
+      var goal = (Settings.load().dailyGoal) || 4;
+      var done = (s.days[tk] && s.days[tk].sessions) || 0;
+      var pct = Math.min(100, Math.round((done / goal) * 100));
+      var met = done >= goal;
+      hosts.forEach(function (h) {
+        h.innerHTML = '<div class="fs-goal-bar"><div class="fs-goal-fill' + (met ? ' met' : '') + '" style="width:' + pct + '%"></div></div>' +
+          '<div class="fs-goal-label">' + (met ? '🎯 Daily goal reached!' : done + ' / ' + goal + ' sessions today') + '</div>';
+      });
+    },
+    renderHeatmap: function (s, tk) {
+      var hosts = $all('[data-heatmap]');
+      if (!hosts.length) return;
+      var WEEKS = 18; // ~4 months
+      var cells = [];
+      var maxm = 0;
+      var start = new Date(); start.setHours(0, 0, 0, 0);
+      start.setDate(start.getDate() - (WEEKS * 7 - 1));
+      // align start to Sunday
+      start.setDate(start.getDate() - start.getDay());
+      for (var i = 0; i < WEEKS * 7; i++) {
+        var d = new Date(start); d.setDate(start.getDate() + i);
+        var key = d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+        var mins = (s.days[key] && s.days[key].minutes) || 0;
+        if (mins > maxm) maxm = mins;
+        cells.push({ key: key, mins: mins, future: d > new Date() });
+      }
+      var html = cells.map(function (c) {
+        var lvl = 0;
+        if (c.mins > 0 && maxm > 0) lvl = Math.min(4, Math.ceil((c.mins / maxm) * 4));
+        return '<div class="fs-hm-cell lvl' + lvl + (c.key === tk ? ' today' : '') + (c.future ? ' future' : '') + '" title="' + Math.round(c.mins) + ' min"></div>';
+      }).join('');
+      hosts.forEach(function (h) { h.innerHTML = html; });
     },
     renderChart: function (s, tk) {
       var hosts = $all('[data-stat-chart]');
@@ -591,13 +687,148 @@
       });
     });
 
+    // theme segmented control
+    $all('[data-set-theme]', panel).forEach(function (b) {
+      b.addEventListener('click', function () {
+        cfg.theme = b.getAttribute('data-set-theme'); Settings.save(cfg);
+        Theme.apply(); syncTheme();
+      });
+    });
+    function syncTheme() {
+      $all('[data-set-theme]', panel).forEach(function (b) { b.classList.toggle('active', b.getAttribute('data-set-theme') === (cfg.theme || 'auto')); });
+    }
+    // daily goal
+    var goalInp = $('[data-set-goal]', panel);
+    if (goalInp) {
+      goalInp.value = cfg.dailyGoal;
+      goalInp.addEventListener('change', function () {
+        cfg.dailyGoal = Math.max(1, Math.min(20, parseInt(goalInp.value, 10) || 4));
+        goalInp.value = cfg.dailyGoal; Settings.save(cfg); Stats.renderAll();
+      });
+    }
+
     var gear = $('[data-settings-toggle]', root);
     if (gear) gear.addEventListener('click', function () {
       var open = panel.classList.toggle('open');
       gear.setAttribute('aria-expanded', open ? 'true' : 'false');
     });
-    sync();
+    sync(); syncTheme();
   }
+
+  /* ============================ Theme (light/dark/auto) ============================ */
+  var Theme = {
+    load: function () { return Settings.load().theme || 'auto'; },
+    isDark: function () {
+      var t = this.load();
+      return t === 'dark' || (t === 'auto' && window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches);
+    },
+    apply: function () {
+      var mode = this.isDark() ? 'dark' : 'light';
+      $all('[data-focus-app]').forEach(function (el) { el.setAttribute('data-theme', mode); });
+      $all('[data-focus-timer]').forEach(function (el) { el.setAttribute('data-theme', mode); });
+      if (window.FS_STANDALONE) document.documentElement.setAttribute('data-theme', mode);
+    },
+    set: function (t) { var s = Settings.load(); s.theme = t; Settings.save(s); this.apply(); }
+  };
+
+  /* ============================ Shop (Storefront API) ============================ */
+  var Shop = {
+    TTL: 2 * 3600 * 1000,
+    gid2id: function (gid) { return String(gid).split('/').pop(); },
+    cache: function () { return State.get('shop', null); },
+    money: function (amt) { return '$' + parseFloat(amt || 0).toFixed(2); },
+    fetch: function (cb) {
+      var cached = this.cache();
+      if (cached && cached.at && (Date.now() - cached.at) < this.TTL && cached.products && cached.products.length) { cb(cached, true); return; }
+      var token = window.FS_STOREFRONT_TOKEN, dom = window.FS_SHOP_DOMAIN;
+      if (!token || !dom || !window.fetch) { cb(cached || { products: [], collections: [] }, false); return; }
+      var q = '{ products(first:60){edges{node{ handle title featuredImage{url(transform:{maxWidth:420})} priceRange{minVariantPrice{amount currencyCode}} variants(first:1){edges{node{id availableForSale}}} collections(first:8){edges{node{handle title}}} }}} }';
+      var self = this;
+      fetch('https://' + dom + '/api/2024-10/graphql.json', {
+        method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Shopify-Storefront-Access-Token': token },
+        body: JSON.stringify({ query: q })
+      }).then(function (r) { return r.json(); }).then(function (j) {
+        var prods = ((j.data && j.data.products.edges) || []).map(function (e) {
+          var n = e.node, v = (n.variants.edges[0] || {}).node || {};
+          return {
+            handle: n.handle, title: n.title, img: (n.featuredImage || {}).url || '',
+            price: n.priceRange.minVariantPrice.amount, cur: n.priceRange.minVariantPrice.currencyCode,
+            vid: v.id ? self.gid2id(v.id) : null, avail: v.availableForSale !== false,
+            cols: ((n.collections.edges) || []).map(function (c) { return { h: c.node.handle, t: c.node.title }; })
+          };
+        });
+        var colMap = {};
+        prods.forEach(function (p) { p.cols.forEach(function (c) { colMap[c.h] = c.t; }); });
+        var out = { at: Date.now(), products: prods, collections: Object.keys(colMap).map(function (h) { return { h: h, t: colMap[h] }; }) };
+        State.set('shop', out); cb(out, false);
+      }).catch(function () { cb(cached || { products: [], collections: [] }, false); });
+    },
+    buyUrl: function (p) { return (window.FS_SHOP_BASE || '') + (p.vid ? '/cart/' + p.vid + ':1' : '/products/' + p.handle); },
+    viewUrl: function (p) { return (window.FS_SHOP_BASE || '') + '/products/' + p.handle; }
+  };
+
+  function initShop(root) {
+    var panel = $('[data-shop]', root);
+    if (!panel) return;
+    var chipsHost = $('[data-shop-chips]', panel);
+    var grid = $('[data-shop-grid]', panel);
+    var filter = 'all';
+    var data = null;
+
+    function renderChips() {
+      if (!chipsHost || !data) return;
+      var chips = '<button class="fs-chip' + (filter === 'all' ? ' active' : '') + '" data-chip="all">All</button>';
+      chips += data.collections.map(function (c) {
+        return '<button class="fs-chip' + (filter === c.h ? ' active' : '') + '" data-chip="' + c.h + '">' + escapeHtml(c.t) + '</button>';
+      }).join('');
+      chipsHost.innerHTML = chips;
+    }
+    function renderGrid() {
+      if (!grid) return;
+      if (!data || !data.products.length) { grid.innerHTML = '<p class="fs-shop-empty">Couldn’t load products right now. <a href="' + (window.FS_SHOP_BASE || '') + '/collections/all" target="_blank" rel="noopener">Browse the full store →</a></p>'; return; }
+      var items = data.products.filter(function (p) { return filter === 'all' || p.cols.some(function (c) { return c.h === filter; }); });
+      grid.innerHTML = items.map(function (p) {
+        return '<div class="fs-prod">' +
+          '<a class="fs-prod-img" href="' + Shop.viewUrl(p) + '" target="_blank" rel="noopener"' + (p.img ? ' style="background-image:url(\'' + p.img + '\')"' : '') + ' aria-label="' + escapeHtml(p.title) + '"></a>' +
+          '<div class="fs-prod-body">' +
+          '<a class="fs-prod-title" href="' + Shop.viewUrl(p) + '" target="_blank" rel="noopener">' + escapeHtml(p.title) + '</a>' +
+          '<div class="fs-prod-foot"><span class="fs-prod-price">' + Shop.money(p.price) + '</span>' +
+          (p.avail ? '<a class="fs-btn sm" href="' + Shop.buyUrl(p) + '" target="_blank" rel="noopener">Buy</a>' : '<span class="fs-prod-sold">Sold out</span>') +
+          '</div></div></div>';
+      }).join('');
+    }
+    function render() { renderChips(); renderGrid(); }
+
+    if (chipsHost) chipsHost.addEventListener('click', function (e) {
+      var b = e.target.closest('[data-chip]'); if (!b) return;
+      filter = b.getAttribute('data-chip'); render();
+    });
+
+    var loaded = false;
+    function load() {
+      if (loaded) return; loaded = true;
+      if (grid) grid.innerHTML = '<div class="fs-shop-loading">Loading products…</div>';
+      Shop.fetch(function (d) { data = d; render(); });
+    }
+    // lazy: load when Shop tab first activated
+    var tabBtn = $('[data-tab="shop"]', root);
+    if (tabBtn) tabBtn.addEventListener('click', load);
+    // if deep-linked to #shop
+    if ((location.hash || '').replace('#', '') === 'shop') load();
+  }
+
+  /* ============================ Fullscreen focus mode ============================ */
+  var Fullscreen = {
+    enter: function () {
+      var app = $('[data-focus-app]'); if (!app) return;
+      app.classList.add('fs-fs-on');
+      if (document.documentElement.requestFullscreen) document.documentElement.requestFullscreen().catch(function () {});
+    },
+    exit: function () {
+      var app = $('[data-focus-app]'); if (app) app.classList.remove('fs-fs-on');
+      if (document.fullscreenElement && document.exitFullscreen) document.exitFullscreen().catch(function () {});
+    }
+  };
 
   /* ============================ Tabs ============================ */
   function initTabs(root) {
@@ -617,8 +848,15 @@
   /* ============================ Boot ============================ */
   function boot() {
     Timer.init();
+    Theme.apply();
     $all('[data-focus-timer]').forEach(function (r) { TimerView(r); });
-    $all('[data-focus-app]').forEach(function (r) { initTabs(r); initSounds(r); initBreathe(r); initTasks(r); initSettings(r); });
+    $all('[data-focus-app]').forEach(function (r) { initTabs(r); initSounds(r); initBreathe(r); initTasks(r); initSettings(r); initShop(r); });
+    // Fullscreen enter/exit buttons
+    $all('[data-act="fullscreen"]').forEach(function (b) { b.addEventListener('click', function () { Fullscreen.enter(); }); });
+    $all('[data-act="fullscreen-exit"]').forEach(function (b) { b.addEventListener('click', function () { Fullscreen.exit(); }); });
+    document.addEventListener('fullscreenchange', function () { if (!document.fullscreenElement) Fullscreen.exit(); });
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape') Fullscreen.exit(); });
+    if (window.matchMedia) { try { matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function () { if (Theme.load() === 'auto') Theme.apply(); }); } catch (e) {} }
     Stats.renderAll();
     Tasks.renderAll();
     Timer.render();
@@ -626,5 +864,5 @@
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
   else boot();
 
-  window.FocusSuite = { Timer: Timer, Sounds: Sounds, Stats: Stats, Tasks: Tasks, State: State, Notify: Notify, Settings: Settings, version: '1.3.0' };
+  window.FocusSuite = { Timer: Timer, Sounds: Sounds, Stats: Stats, Tasks: Tasks, State: State, Notify: Notify, Settings: Settings, Theme: Theme, Shop: Shop, Fullscreen: Fullscreen, version: '2.0.0' };
 })(window, document);

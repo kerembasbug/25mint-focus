@@ -6,6 +6,18 @@
 }
 .fs-app *, .fs-home *{ box-sizing:border-box; }
 
+/* ---------- Dark theme ---------- */
+.fs-app[data-theme="dark"], .fs-home[data-theme="dark"]{
+  --fs-bg:#0f1714; --fs-card:#17211d; --fs-ink:#e8f0ec; --fs-mut:#8fa39b; --fs-line:#26332e;
+}
+.fs-app[data-theme="dark"] .fs-tabs, .fs-app[data-theme="dark"] .fs-seg{ background:#101a16; }
+.fs-app[data-theme="dark"] .fs-seg button.active{ background:#26332e; color:#e8f0ec; }
+.fs-app[data-theme="dark"] .fs-task, .fs-app[data-theme="dark"] .fs-sound, .fs-app[data-theme="dark"] .fs-stat, .fs-app[data-theme="dark"] .fs-task-form input, .fs-app[data-theme="dark"] .fs-set-durs input, .fs-app[data-theme="dark"] .fs-prod{ background:#101a16; }
+.fs-app[data-theme="dark"] .fs-bar-track{ background:#101a16; }
+.fs-app[data-theme="dark"] .fs-switch{ background:#33443d; }
+html[data-theme="dark"]{ background:#0f1714; }
+html[data-theme="dark"] body{ background:#0f1714; }
+
 /* ---------- Shared card / buttons ---------- */
 .fs-card{ background:var(--fs-card); border:1px solid var(--fs-line); border-radius:22px; padding:26px 22px 28px; box-shadow:0 18px 50px -24px rgba(20,80,55,.4); }
 .fs-btn{ border:0; border-radius:12px; cursor:pointer; font-weight:800; font-size:1.02em; padding:14px 34px; background:var(--fs-green); color:#fff; box-shadow:0 8px 20px -8px rgba(30,120,85,.6); transition:.18s transform,.18s background; }
@@ -146,6 +158,66 @@
 .fs-celebrate-close{ position:absolute; top:8px; right:10px; border:0; background:transparent; font-size:20px; line-height:1; color:#b3a26a; cursor:pointer; }
 .fs-celebrate-fade{ opacity:0; transition:opacity 1s; }
 @keyframes fsPop{ from{opacity:0; transform:scale(.9) translateY(8px);} to{opacity:1; transform:none;} }
+
+/* ---------- Tabs: scrollable when many ---------- */
+.fs-tabs{ flex-wrap:nowrap; overflow-x:auto; -webkit-overflow-scrolling:touch; scrollbar-width:none; }
+.fs-tabs::-webkit-scrollbar{ display:none; }
+.fs-tab{ flex:1 0 auto; }
+
+/* ---------- Settings: theme + goal ---------- */
+.fs-set-seg{ display:inline-flex; gap:4px; background:#eef5f2; padding:4px; border-radius:999px; }
+.fs-app[data-theme="dark"] .fs-set-seg{ background:#101a16; }
+.fs-set-seg button{ border:0; background:transparent; color:var(--fs-mut); font-weight:700; font-size:12.5px; padding:7px 14px; border-radius:999px; cursor:pointer; }
+.fs-set-seg button.active{ background:var(--fs-green); color:#fff; }
+.fs-set-goal{ width:64px; border:1px solid #d7e7e0; border-radius:10px; padding:8px 10px; font-size:15px; text-align:center; background:#fbfdfc; color:var(--fs-ink); }
+.fs-app[data-theme="dark"] .fs-set-goal{ background:#101a16; border-color:#33443d; }
+
+/* ---------- Goal + heatmap ---------- */
+.fs-goal{ margin:18px 0 4px; }
+.fs-goal-bar{ height:12px; background:#eef5f2; border-radius:999px; overflow:hidden; }
+.fs-app[data-theme="dark"] .fs-goal-bar{ background:#101a16; }
+.fs-goal-fill{ height:100%; background:linear-gradient(90deg,#37a97e,var(--fs-green-d)); border-radius:999px; transition:width .5s cubic-bezier(.34,1.3,.64,1); }
+.fs-goal-fill.met{ background:linear-gradient(90deg,#f0a63a,#e8792b); }
+.fs-goal-label{ text-align:center; font-size:13px; font-weight:700; color:var(--fs-mut); margin-top:8px; }
+.fs-heatmap{ display:grid; grid-template-rows:repeat(7,1fr); grid-auto-flow:column; grid-auto-columns:1fr; gap:3px; margin-top:8px; }
+.fs-hm-cell{ aspect-ratio:1; border-radius:3px; background:#eef5f2; }
+.fs-app[data-theme="dark"] .fs-hm-cell{ background:#182420; }
+.fs-hm-cell.lvl1{ background:#bfe6d5; } .fs-hm-cell.lvl2{ background:#7fd0ac; }
+.fs-hm-cell.lvl3{ background:#46b184; } .fs-hm-cell.lvl4{ background:var(--fs-green-d); }
+.fs-hm-cell.today{ outline:2px solid #e8792b; outline-offset:-1px; }
+.fs-hm-cell.future{ opacity:.35; }
+
+/* ---------- Shop ---------- */
+.fs-shop-chips{ display:flex; gap:8px; overflow-x:auto; padding-bottom:6px; margin-bottom:14px; scrollbar-width:none; }
+.fs-shop-chips::-webkit-scrollbar{ display:none; }
+.fs-chip{ flex:0 0 auto; border:1px solid var(--fs-line); background:var(--fs-card); color:var(--fs-mut); font-weight:700; font-size:12.5px; padding:8px 15px; border-radius:999px; cursor:pointer; white-space:nowrap; }
+.fs-chip.active{ background:var(--fs-green); color:#fff; border-color:var(--fs-green); }
+.fs-shop-grid{ display:grid; grid-template-columns:repeat(2,1fr); gap:14px; }
+.fs-prod{ background:#fbfdfc; border:1px solid var(--fs-line); border-radius:14px; overflow:hidden; display:flex; flex-direction:column; }
+.fs-prod-img{ display:block; aspect-ratio:1; background:#eef5f2 center/cover no-repeat; }
+.fs-prod-body{ padding:11px 12px 12px; display:flex; flex-direction:column; gap:8px; flex:1; }
+.fs-prod-title{ font-size:13.5px; font-weight:700; color:var(--fs-ink); text-decoration:none; line-height:1.3; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+.fs-prod-foot{ display:flex; align-items:center; justify-content:space-between; margin-top:auto; }
+.fs-prod-price{ font-weight:800; color:var(--fs-green-d); font-size:15px; }
+.fs-app[data-theme="dark"] .fs-prod-price{ color:#7fd0ac; }
+.fs-prod-sold{ font-size:12px; color:var(--fs-mut); font-weight:700; }
+.fs-shop-loading, .fs-shop-empty{ grid-column:1/-1; text-align:center; color:var(--fs-mut); font-size:14px; padding:30px 10px; }
+.fs-shop-note{ text-align:center; color:var(--fs-mut); font-size:12.5px; margin:16px 0 0; }
+
+/* ---------- Fullscreen focus mode ---------- */
+.fs-fs-btn{ margin-top:12px; }
+.fs-app.fs-fs-on{ position:fixed; inset:0; z-index:99999; background:#0f1714; max-width:none; margin:0; padding:0; display:flex; align-items:center; justify-content:center; overflow:auto; }
+.fs-app.fs-fs-on .fs-tabs, .fs-app.fs-fs-on .fs-settings-toggle, .fs-app.fs-fs-on .fs-settings, .fs-app.fs-fs-on .fs-presets, .fs-app.fs-fs-on .fs-cycles-row, .fs-app.fs-fs-on .fs-fs-btn{ display:none; }
+.fs-app.fs-fs-on .fs-panel{ display:none !important; }
+.fs-app.fs-fs-on .fs-panel[data-panel="timer"]{ display:block !important; }
+.fs-app.fs-fs-on .fs-card{ background:transparent; border:0; box-shadow:none; }
+.fs-app.fs-fs-on .fs-clock{ color:#fff; font-size:84px; }
+.fs-app.fs-fs-on .fs-state{ color:rgba(255,255,255,.7); }
+.fs-app.fs-fs-on .fs-ring-bg{ stroke:rgba(255,255,255,.15); }
+.fs-app.fs-fs-on .fs-ring-wrap{ width:340px; height:340px; }
+.fs-app.fs-fs-on .fs-modes{ background:rgba(255,255,255,.1); }
+.fs-fs-exit{ position:fixed; top:18px; right:20px; z-index:100000; display:none; border:0; background:rgba(255,255,255,.15); color:#fff; font-size:15px; font-weight:700; padding:9px 16px; border-radius:999px; cursor:pointer; }
+.fs-app.fs-fs-on .fs-fs-exit{ display:block; }
 
 /* ---------- Responsive ---------- */
 @media (max-width:680px){
