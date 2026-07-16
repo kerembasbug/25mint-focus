@@ -1,13 +1,28 @@
-# 25Mint Focus — Standalone PWA
+# 25Mint Focus — Focus tool + storefront PWA (v2.0)
 
 Portable build of the 25Mint Focus engine (same `focus-suite.js` that powers
 pomodorotimer.com.au). Installable PWA, works fully offline, ready to wrap as a
 Trusted Web Activity (TWA) for the Google Play Store.
 
+**Both a tool and a store.** Tabs: Timer (25/5, 50/10, 15/3, custom) · Sounds
+(brown/pink/white noise + rain/ocean/café/forest, synthesized, offline) ·
+Breathe · Stats (7-day chart, streak, daily goal, 4-month heatmap) · Tasks ·
+**Shop** (all products via Shopify Storefront API, one-tap checkout). Plus
+dark/auto theme and a fullscreen focus mode. Engine v2.0.0.
+
+### E-commerce & Google Play policy
+The Shop tab lists physical timers pulled live via the **Storefront API**
+(public read-only token in `index.html` — safe to embed) and "Buy" opens
+`https://pomodorotimer.com.au/cart/{variantId}:1` → **Shopify's own secure
+checkout**. The app never touches card data. Physical goods are allowed to use
+external (web) checkout on Play — Play Billing is only mandatory for *digital*
+goods — so a TWA wrapping this is compliant.
+
 ## ✅ Live now
 
 **https://kerembasbug.github.io/25mint-focus/** — deployed via GitHub Pages,
-installable today (Add to Home Screen works, runs offline). Verified 2026-07-08.
+installable today (Add to Home Screen works, runs offline). v2.0 verified 2026-07-16.
+Store-listing screenshots in `screenshots/`.
 
 To ship on the **Play Store** you still need the custom domain (below) so that
 `/.well-known/assetlinks.json` is served at the site root — GitHub *project*

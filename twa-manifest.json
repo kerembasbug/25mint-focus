@@ -18,8 +18,8 @@
     "path": "./android.keystore",
     "alias": "android"
   },
-  "appVersionName": "1.0.0",
-  "appVersionCode": 1,
+  "appVersionName": "2.0.0",
+  "appVersionCode": 2,
   "shortcuts": [
     {
       "name": "Start 25-minute focus",
