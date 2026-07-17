@@ -1,10 +1,15 @@
 [
   {
-    "relation": ["delegate_permission/common.handle_all_urls"],
+    "relation": [
+      "delegate_permission/common.handle_all_urls"
+    ],
     "target": {
       "namespace": "android_app",
       "package_name": "au.com.pomodorotimer.focus",
-      "sha256_cert_fingerprints": ["REPLACE_WITH_PLAY_APP_SIGNING_SHA256"]
+      "sha256_cert_fingerprints": [
+        "7B:51:1F:5B:C7:4E:C6:C9:8E:AA:80:A6:76:5A:0E:B3:E7:D6:CD:6C:05:BA:A6:AE:A0:BD:43:B3:94:36:05:E5",
+        "REPLACE_WITH_PLAY_APP_SIGNING_SHA256"
+      ]
     }
   }
 ]
