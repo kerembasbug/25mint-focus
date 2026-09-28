@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Timer · 25Mint</title>
+<style>
+  :root{ --bg:#2f8f6b; --bg2:#256e52; --fg:#fff; --mut:rgba(255,255,255,.78); --track:rgba(255,255,255,.22); --ring:#fff; --btn:#fff; --btnfg:#1e6a4d; --chip:rgba(255,255,255,.16); }
+  [data-theme="light"]{ --bg:#f4faf7; --bg2:#e8f3ee; --fg:#17392c; --mut:#4d6b5f; --track:#d5e8df; --ring:#2f8f6b; --btn:#2f8f6b; --btnfg:#fff; --chip:#dcece5; }
+  [data-theme="dark"]{ --bg:#15201b; --bg2:#0f1713; --fg:#eafaf3; --mut:#9fbdb0; --track:#26352e; --ring:#4cc79a; --btn:#4cc79a; --btnfg:#0f1713; --chip:#22302a; }
+  *{ box-sizing:border-box; }
+  html,body{ margin:0; height:100%; }
+  body{ font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; background:linear-gradient(135deg,var(--bg),var(--bg2)); color:var(--fg);
+        display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3vmin; padding:3vmin; text-align:center; }
+  .ring{ position:relative; width:min(62vmin,420px); aspect-ratio:1; cursor:pointer; }
+  .ring svg{ width:100%; height:100%; transform:rotate(-90deg); }
+  .ring circle{ fill:none; stroke-width:12; }
+  .bg{ stroke:var(--track); } .fg{ stroke:var(--ring); stroke-linecap:round; transition:stroke-dashoffset .3s linear; }
+  .done .fg{ stroke:#ffd166; }
+  .t{ position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; }
+  .clock{ font-size:min(15vmin,96px); font-weight:800; font-variant-numeric:tabular-nums; line-height:1; }
+  .done .clock{ animation:p 1s ease-in-out infinite; } @keyframes p{ 50%{ opacity:.35; } }
+  .state{ margin-top:1.4vmin; font-size:min(2.8vmin,13px); letter-spacing:.18em; text-transform:uppercase; font-weight:700; color:var(--mut); }
+  .row{ display:flex; gap:8px; flex-wrap:wrap; justify-content:center; }
+  button{ font:inherit; border:0; border-radius:999px; cursor:pointer; font-weight:700; font-size:13px; padding:8px 14px; background:var(--chip); color:var(--fg); }
+  button.main{ background:var(--btn); color:var(--btnfg); padding:11px 26px; font-size:15px; }
+  button:disabled{ opacity:.4; cursor:default; }
+  a.by{ font-size:12px; color:var(--mut); text-decoration:none; }
+  a.by:hover{ text-decoration:underline; }
+  @media (max-height:260px){ .state,.row.tweak{ display:none; } }
+</style>
+</head>
+<body>
+  <div class="ring" id="ring" role="button" tabindex="0" aria-label="Start or pause">
+    <svg viewBox="0 0 250 250" aria-hidden="true"><circle class="bg" cx="125" cy="125" r="110"/><circle class="fg" id="fg" cx="125" cy="125" r="110"/></svg>
+    <div class="t"><div class="clock" id="clock">10:00</div><div class="state" id="state" aria-live="polite">Ready</div></div>
+  </div>
+  <div class="row"><button class="main" id="toggle">▶ Start</button><button id="reset">Reset</button></div>
+  <div class="row tweak"><button id="minus">−1 min</button><button id="plus">+1 min</button><button id="sound" aria-pressed="true">🔔 Sound on</button><button id="fs">⛶ Full screen</button></div>
+  <a class="by" id="by" target="_blank" rel="noopener">Free timer by 25Mint</a>
+<script>
+(function () {
+  var P = new URLSearchParams(location.search);
+  var base = Math.min(180, Math.max(1, parseInt(P.get('m'), 10) || 10)) * 60;
+  var theme = P.get('theme'); if (theme === 'light' || theme === 'dark') document.documentElement.setAttribute('data-theme', theme);
+  var PAGES = { 1:'1-minute-timer', 2:'2-minute-timer', 3:'3-minute-timer', 5:'5-minute-timer', 10:'10-minute-timer', 15:'15-minute-timer', 20:'20-minute-timer', 25:'25-minute-timer', 30:'30-minute-timer', 40:'40-minute-timer', 45:'45-minute-timer', 60:'1-hour-timer' };
+  var by = document.getElementById('by');
+  by.href = 'https://pomodorotimer.com.au/pages/' + (PAGES[base / 60] || '10-minute-timer') + '?utm_source=embed&utm_medium=widget';
+  var $ = function (id) { return document.getElementById(id); };
+  var clock = $('clock'), stateEl = $('state'), fg = $('fg'), tgl = $('toggle'), minus = $('minus'), plus = $('plus'), snd = $('sound');
+  var C = 2 * Math.PI * 110; fg.style.strokeDasharray = C;
+  var st = { total: base, remaining: base, running: false, endAt: 0 }, h = null, AC = null, sched = [], soundOn = true;
+  function audio() { try { AC = AC || new (window.AudioContext || window.webkitAudioContext)(); if (AC.state === 'suspended') AC.resume(); } catch (e) { AC = null; } return AC; }
+  function beeps(c, at) { var n = []; [0, .4, .8, 1.6, 2, 2.4].forEach(function (d) { var o = c.createOscillator(), g = c.createGain(); o.type = 'sine'; o.frequency.value = 880; g.gain.setValueAtTime(.0001, at + d); g.gain.exponentialRampToValueAtTime(.3, at + d + .02); g.gain.exponentialRampToValueAtTime(.0001, at + d + .3); o.connect(g); g.connect(c.destination); o.start(at + d); o.stop(at + d + .32); n.push(o); }); return n; }
+  function cancel() { sched.forEach(function (o) { try { o.stop(); } catch (e) {} }); sched = []; }
+  function fmt(s) { var m = Math.floor(s / 60), x = s % 60; return m + ':' + (x < 10 ? '0' : '') + x; }
+  function render() {
+    clock.textContent = fmt(st.remaining);
+    fg.style.strokeDashoffset = C * (1 - st.remaining / st.total);
+    var done = !st.running && st.remaining === 0;
+    document.body.classList.toggle('done', done);
+    stateEl.textContent = st.running ? 'Counting down' : done ? 'Time’s up!' : (st.remaining < st.total ? 'Paused' : 'Ready');
+    tgl.textContent = st.running ? '❚❚ Pause' : done ? '↻ Restart' : (st.remaining < st.total ? '▶ Resume' : '▶ Start');
+    minus.disabled = st.running || st.total <= 60; plus.disabled = st.running || st.total >= 10800;
+    snd.textContent = soundOn ? '🔔 Sound on' : '🔕 Sound off'; snd.setAttribute('aria-pressed', soundOn);
+  }
+  function tick() { var l = Math.round((st.endAt - Date.now()) / 1000); st.remaining = Math.max(0, l); if (l <= 0) return complete(); render(); }
+  function complete() { clearInterval(h); h = null; var had = sched.length; sched = []; st.running = false; st.remaining = 0; if (!had && soundOn) { var c = audio(); if (c) beeps(c, c.currentTime + .05); } render(); }
+  function start() { if (st.remaining <= 0) st.remaining = st.total; st.running = true; st.endAt = Date.now() + st.remaining * 1000; cancel(); var c = audio(); if (c && soundOn) sched = beeps(c, c.currentTime + st.remaining); clearInterval(h); h = setInterval(tick, 250); render(); }
+  function pause() { st.remaining = Math.max(0, Math.round((st.endAt - Date.now()) / 1000)); st.running = false; cancel(); clearInterval(h); h = null; render(); }
+  function toggle() { st.running ? pause() : start(); }
+  tgl.onclick = toggle; $('ring').onclick = toggle;
+  $('ring').onkeydown = function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); } };
+  $('reset').onclick = function () { cancel(); clearInterval(h); h = null; st = { total: base, remaining: base, running: false, endAt: 0 }; render(); };
+  function adj(d) { if (st.running) return; st.total = Math.min(10800, Math.max(60, st.total + d)); st.remaining = st.total; render(); }
+  minus.onclick = function () { adj(-60); }; plus.onclick = function () { adj(60); };
+  snd.onclick = function () { soundOn = !soundOn; if (st.running) { cancel(); var c = audio(); if (c && soundOn) sched = beeps(c, c.currentTime + st.remaining); } render(); };
+  $('fs').onclick = function () { if (document.fullscreenElement) document.exitFullscreen(); else if (document.documentElement.requestFullscreen) document.documentElement.requestFullscreen(); };
+  document.addEventListener('keydown', function (e) { if (e.key === ' ' && e.target === document.body) { e.preventDefault(); toggle(); } });
+  if (!document.fullscreenEnabled) $('fs').style.display = 'none';
+  render();
+})();
+</script>
+</body>
+</html>
