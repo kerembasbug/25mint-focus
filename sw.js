@@ -1,5 +1,5 @@
 /* 25Mint Focus — service worker: precache app shell, cache-first with network fallback */
-const CACHE = '25mint-focus-v1';
+const CACHE = '25mint-focus-v2';
 const SHELL = [
   './',
   'index.html',

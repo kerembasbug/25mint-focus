@@ -119,7 +119,7 @@
       // Reconcile a running session against wall clock (persistence across reloads / pages)
       if (s.running && s.endAt) {
         var left = Math.round((s.endAt - Date.now()) / 1000);
-        if (left <= 0) { s.running = false; s.remaining = 0; }
+        if (left <= 0) { s.remaining = 0; } // still marked running: init() completes it silently (counts the session, advances to break)
         else { s.remaining = left; }
       }
       this.st = s;
